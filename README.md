@@ -2,9 +2,8 @@
 
 This is a very basic proof of concept of BIDS Transformers.
 It implements two BIDS Transformers: one based on FSL ROI extractor and second based on FSL Skull Stripping.
-Example notebook is [BIDS_Transformers.ipynb](https://github.com/neuro-ml/BIDSTransformers/blob/master/BIDS_Transformers.ipynb).
 
-To run this notebook you will need the following:
+Example notebook is [BIDS_Transformers.ipynb](https://github.com/neuro-ml/BIDSTransformers/blob/master/BIDS_Transformers.ipynb). To run this notebook you will need the following:
 
 1. Clone this [repository](https://github.com/neuro-ml/BIDSTransformers)
 2. Working Nipype [installation](https://github.com/nipy/nipype). You can also use docker container (see instructions below).
