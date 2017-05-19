@@ -3,6 +3,7 @@ from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
 from nipype.interfaces.fsl import ExtractROI
 from nipype.interfaces.fsl import BET
+from bids.grabbids import BIDSLayout
 
 
 def cut_nii_gz(filename):
@@ -34,8 +35,8 @@ def build_directory(dirname, self):
         dirname = self.basedir
         dirname += '/derivatives'
         dirname += '/{}/'.format(self.__class__.__name__)
-        dirname += '{}/'.format(rec_type)
         dirname += '{}/'.format(session)
+        dirname += '{}/'.format(rec_type)
 
     else:
         
@@ -72,6 +73,22 @@ def build_filepath_for_BET(dirname, filename, self):
 
     bet_file = os.path.abspath(bet_file) + '.nii.gz'
     return bet_file
+
+
+def run_fsl_roi(in_file, self):
+    filename = os.path.basename(in_file)
+    dirname = os.path.dirname(in_file)
+    dirname = build_directory(dirname, self)
+    if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+    roi_file = build_filepath_for_ROI(dirname, filename, self)
+    self.out_files.append(roi_file)
+    
+    fslroi = ExtractROI(in_file=in_file,
+                        roi_file=roi_file,
+                        **self.params)
+    fslroi.run()
     
 
 class ROITransformer(BaseEstimator, TransformerMixin):
@@ -82,29 +99,48 @@ class ROITransformer(BaseEstimator, TransformerMixin):
         self.label = label
         self.params = params
         self.basedir = basedir
+        self.layout = BIDSLayout(basedir)
+        self.out_files = []
     
-    def fit(self, filepaths, y=None, **fit_params):
+    def fit(self, X, y=None, **fit_params):
         return self
 
-    def transform(self, filepaths, y=None):
-        filepaths = filepaths.copy()
-        out_files = []
-        for in_file in filepaths:
-            filename = os.path.basename(in_file)
-            dirname = os.path.dirname(in_file)
-            dirname = build_directory(dirname, self)
-            if not os.path.exists(dirname):
-                    os.makedirs(dirname)
+    def transform(self, X, y=None):
 
-            roi_file = build_filepath_for_ROI(dirname, filename, self)
-            out_files.append(roi_file)
+        if type(X) == str:
+
+            in_file = X
+            run_fsl_roi(in_file, self)
+
+        elif type(X[0]) == str and type(X) == list:
             
-            fslroi = ExtractROI(in_file=in_file,
-                                roi_file=roi_file,
-                                **self.params)
-            fslroi.run()
+            X = X.copy()
+            for in_file in X:
+                run_fsl_roi(in_file, self)
+            
+        elif type(X[0]) == tuple and type(X) == list:
+            
+            X = X.copy()
+            for subject, session in X:
+                in_file = self.layout.get(subject=subject, session=session)[0].filename
+                run_fsl_roi(in_file, self)
 
-        return out_files
+        return self.out_files
+
+
+def run_fsl_bet(in_file, self):
+    filename = os.path.basename(in_file)
+    dirname = os.path.dirname(in_file)
+    dirname = build_directory(dirname, self)
+    if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+    bet_file = build_filepath_for_BET(dirname, filename, self)
+    self.out_files.append(bet_file)
+    
+    fslbet = BET(in_file=in_file,
+                 out_file=bet_file)
+    fslbet.run()
 
 
 class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
@@ -113,25 +149,33 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
         self.space = space
         self.variant = variant
         self.basedir = basedir
+        self.layout = BIDSLayout(basedir)
+        self.out_files = []
     
-    def fit(self, filepaths, y=None, **fit_params):
+    def fit(self, X, y=None, **fit_params):
         return self
 
-    def transform(self, filepaths, y=None):
-        filepaths = filepaths.copy()
-        out_files = []
-        for in_file in filepaths:
-            filename = os.path.basename(in_file)
-            dirname = os.path.dirname(in_file)
-            dirname = build_directory(dirname, self)
-            if not os.path.exists(dirname):
-                    os.makedirs(dirname)
+    def transform(self, X, y=None):
 
-            bet_file = build_filepath_for_BET(dirname, filename, self)
-            out_files.append(bet_file)
-            
-            fslbet = BET(in_file=in_file,
-                         out_file=bet_file)
-            fslbet.run()
+        if type(X) == str:
+            print(1)
 
-        return out_files
+            in_file = X
+            run_fsl_bet(in_file, self)
+
+        elif type(X[0]) == str and type(X) == list:
+            print(2)
+
+            X = X.copy()
+            for in_file in X:
+                run_fsl_bet(in_file, self)
+
+        elif type(X[0]) == tuple and type(X) == list:
+            print(3)
+
+            X = X.copy()
+            for subject, session in X:
+                in_file = self.layout.get(subject=subject, session=session)[0].filename
+                run_fsl_bet(in_file, self)
+
+        return self.out_files
