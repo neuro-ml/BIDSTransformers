@@ -7,7 +7,7 @@ To run this notebook you will need the following:
 
 1. Clone this [repository](https://github.com/neuro-ml/BIDSTransformers)
 2. Working Nipype [installation](https://github.com/nipy/nipype). You can also use docker container (see instructions below).
-3. [PyBIDS package](https://github.com/INCF/pybids) (pip install pybids)
+3. [PyBIDS package](https://github.com/INCF/pybids) (`pip install pybids`)
 4. Download data folder from one of the following links and put it into the folder `/bidst/tests/data`
 
 * [Link1](https://drive.google.com/drive/folders/0B6U5KQalulfAOXlHYkdIa25QbG8?usp=sharing)
@@ -15,7 +15,7 @@ To run this notebook you will need the following:
 
 ## Installing Nipype 
 
-You can follow the [Nipype tutorial](https://miykael.github.io/nipype_tutorial/)
+You can follow the [Nipype](https://miykael.github.io/nipype_tutorial/) tutorial.
 
 ## Using docker
 
