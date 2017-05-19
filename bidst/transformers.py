@@ -57,7 +57,7 @@ def build_filepath_for_ROI(dirname, filename, self):
     if self.variant is not None:
         roi_file += '_variant-{}'.format(self.variant)
 
-    roi_file += '_label-{}'.format(self.label)
+    roi_file += '_label-{}'.format(self.label) + '_roi'
     roi_file = os.path.abspath(roi_file) + '.nii.gz'
     return roi_file
 
@@ -71,7 +71,7 @@ def build_filepath_for_BET(dirname, filename, self):
     if self.variant is not None:
         bet_file += '_variant-{}'.format(self.variant)
 
-    bet_file += '_label-{}'.format(self.label)
+    bet_file += '_label-{}'.format(self.label) + '_brain'
     bet_file = os.path.abspath(bet_file) + '.nii.gz'
     return bet_file
 
@@ -122,6 +122,7 @@ class ROITransformer(BaseEstimator, TransformerMixin):
             X = X.copy()
             for subject in X:
                 in_file = self.layout.get(subject=subject, **self.params)[0].filename
+                run_fsl_roi(in_file, self)
 
         return X
 
