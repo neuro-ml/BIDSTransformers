@@ -83,49 +83,39 @@ def run_fsl_roi(in_file, self):
             os.makedirs(dirname)
 
     roi_file = build_filepath_for_ROI(dirname, filename, self)
-    self.out_files.append(roi_file)
     
     fslroi = ExtractROI(in_file=in_file,
                         roi_file=roi_file,
-                        **self.params)
+                        t_min=0,
+                        t_size=1)
     fslroi.run()
     
 
 class ROITransformer(BaseEstimator, TransformerMixin):
     
-    def __init__(self, label, basedir=os.path.abspath('.'), space=None, variant=None, **params):
+    def __init__(self, label, basedir=os.path.abspath('.'), space=None,
+            variant=None, **params):
         self.space = space
         self.variant = variant
         self.label = label
         self.params = params
         self.basedir = basedir
         self.layout = BIDSLayout(basedir)
-        self.out_files = []
     
     def fit(self, X, y=None, **fit_params):
         return self
 
     def transform(self, X, y=None):
 
-        if type(X) == str:
-
-            in_file = X
+        assert type(X) == list
+        assert type(X[0]) == tuple
+            
+        X = X.copy()
+        for subject, session in X:
+            in_file = self.layout.get(subject=subject, session=session, **self.params)[0].filename
             run_fsl_roi(in_file, self)
 
-        elif type(X[0]) == str and type(X) == list:
-            
-            X = X.copy()
-            for in_file in X:
-                run_fsl_roi(in_file, self)
-            
-        elif type(X[0]) == tuple and type(X) == list:
-            
-            X = X.copy()
-            for subject, session in X:
-                in_file = self.layout.get(subject=subject, session=session)[0].filename
-                run_fsl_roi(in_file, self)
-
-        return self.out_files
+        return X
 
 
 def run_fsl_bet(in_file, self):
@@ -136,7 +126,6 @@ def run_fsl_bet(in_file, self):
             os.makedirs(dirname)
 
     bet_file = build_filepath_for_BET(dirname, filename, self)
-    self.out_files.append(bet_file)
     
     fslbet = BET(in_file=in_file,
                  out_file=bet_file)
@@ -145,37 +134,39 @@ def run_fsl_bet(in_file, self):
 
 class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
 
-    def __init__(self, basedir=os.path.abspath('.'), space=None, variant=None):
+    def __init__(self, basedir=os.path.abspath('.'), space=None, variant=None, **params):
         self.space = space
         self.variant = variant
         self.basedir = basedir
         self.layout = BIDSLayout(basedir)
-        self.out_files = []
+        self.params = params
     
     def fit(self, X, y=None, **fit_params):
         return self
 
     def transform(self, X, y=None):
 
-        if type(X) == str:
-            print(1)
+        assert type(X) == list
+        assert type(X[0]) == tuple
 
-            in_file = X
+        X = X.copy()
+        for subject, session in X:
+            label = self.params.get('label', None)
+            if label is not None:
+                self.params.pop('label')
+
+            in_file = self.layout.get(subject=subject, session=session, **self.params)
+
+            if label is not None:
+                for File in in_file:
+                    if '_label-{}'.format(label) in File.filename:
+                        in_file = File
+
+            if type(in_file) == list:
+                in_file = in_file[0].filename
+            else:
+                in_file = in_file.filename
+
             run_fsl_bet(in_file, self)
 
-        elif type(X[0]) == str and type(X) == list:
-            print(2)
-
-            X = X.copy()
-            for in_file in X:
-                run_fsl_bet(in_file, self)
-
-        elif type(X[0]) == tuple and type(X) == list:
-            print(3)
-
-            X = X.copy()
-            for subject, session in X:
-                in_file = self.layout.get(subject=subject, session=session)[0].filename
-                run_fsl_bet(in_file, self)
-
-        return self.out_files
+        return X
