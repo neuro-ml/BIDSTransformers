@@ -71,6 +71,7 @@ def build_filepath_for_BET(dirname, filename, self):
     if self.variant is not None:
         bet_file += '_variant-{}'.format(self.variant)
 
+    bet_file += '_label-{}'.format(self.label)
     bet_file = os.path.abspath(bet_file) + '.nii.gz'
     return bet_file
 
@@ -108,12 +109,19 @@ class ROITransformer(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
 
         assert type(X) == list
-        assert type(X[0]) == tuple
+
+        if type(X[0]) == tuple:
             
-        X = X.copy()
-        for subject, session in X:
-            in_file = self.layout.get(subject=subject, session=session, **self.params)[0].filename
-            run_fsl_roi(in_file, self)
+            X = X.copy()
+            for subject, session in X:
+                in_file = self.layout.get(subject=subject, session=session, **self.params)[0].filename
+                run_fsl_roi(in_file, self)
+
+        elif type(X[0]) == str:
+
+            X = X.copy()
+            for subject in X:
+                in_file = self.layout.get(subject=subject, **self.params)[0].filename
 
         return X
 
@@ -134,12 +142,13 @@ def run_fsl_bet(in_file, self):
 
 class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
 
-    def __init__(self, basedir=os.path.abspath('.'), space=None, variant=None, **params):
+    def __init__(self, basedir=os.path.abspath('.'), space=None, variant=None, label=None, **params):
         self.space = space
         self.variant = variant
         self.basedir = basedir
         self.layout = BIDSLayout(basedir)
         self.params = params
+        self.label = label
     
     def fit(self, X, y=None, **fit_params):
         return self
@@ -147,26 +156,42 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
 
         assert type(X) == list
-        assert type(X[0]) == tuple
 
-        X = X.copy()
-        for subject, session in X:
-            label = self.params.get('label', None)
-            if label is not None:
-                self.params.pop('label')
+        if type(X[0]) == tuple:
 
-            in_file = self.layout.get(subject=subject, session=session, **self.params)
+            X = X.copy()
+            for subject, session in X:
+                in_file = self.layout.get(subject=subject, session=session, **self.params)
 
-            if label is not None:
-                for File in in_file:
-                    if '_label-{}'.format(label) in File.filename:
-                        in_file = File
+                if self.label is not None:
+                    for File in in_file:
+                        if '_label-{}'.format(self.label) in File.filename:
+                            in_file = File
 
-            if type(in_file) == list:
-                in_file = in_file[0].filename
-            else:
-                in_file = in_file.filename
+                if type(in_file) == list:
+                    in_file = in_file[0].filename
+                else:
+                    in_file = in_file.filename
 
-            run_fsl_bet(in_file, self)
+                run_fsl_bet(in_file, self)
+
+        elif type(X[0]) == str:
+
+            X = X.copy()
+            for subject in X:
+
+                in_file = self.layout.get(subject=subject, **self.params)
+
+                if self.label is not None:
+                    for File in in_file:
+                        if '_label-{}'.format(self.label) in File.filename:
+                            in_file = File
+
+                if type(in_file) == list:
+                    in_file = in_file[0].filename
+                else:
+                    in_file = in_file.filename
+
+                run_fsl_bet(in_file, self)
 
         return X
