@@ -42,6 +42,8 @@ sudo docker run -v $PWD/:/work -it -p 8809:8809 nipype/nipype:latest
 
 ```bash
 pip install ipython notebook pybids
+apt-get update
+apt-get install tree
 ```
 
 ### Starting jupyter notebook in the docker:
