@@ -25,10 +25,17 @@ You can follow the [Nipype](https://miykael.github.io/nipype_tutorial/) tutorial
 sudo docker pull nipype/nipype
 ```
 
+### Downloading repository
+
+```bash
+git clone https://github.com/neuro-ml/BIDSTransformers.git
+cd BIDSTransformers
+```
+
 ### Running docker:
 
 ```bash
-sudo docker run -v $PWD/work:/work -it -p 8809:8809 nipype/nipype:latest
+sudo docker run -v $PWD/:/work -it -p 8809:8809 nipype/nipype:latest
 ```
 
 ### Installing needed packages in the docker:
