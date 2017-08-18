@@ -27,12 +27,12 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
         self.search_param = search_param
         self.transform_param = transform_param
 
-        self.tags = dict()
+        self.tags = list()
         if space:
-            self.tags['space'] = space
+            self.tags.append( ('space', space) )
         if variant:
-            self.tags['variant'] = variant
-        if self.tags == dict():
+            self.tags.append( ('variant', variant) )
+        if self.tags == list():
             self.tags = None
 
     def fit(self, X, y=None, **fit_params):
