@@ -1,198 +1,132 @@
 import os
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
+
+from .path_manager import PathManager
+
 from nipype.interfaces.fsl import ExtractROI
 from nipype.interfaces.fsl import BET
-from bids.grabbids import BIDSLayout
+from nipype.interfaces.fsl import FLIRT
+from nipype.interfaces.fsl import FNIRT
+from nipype.interfaces.ants import N4BiasFieldCorrection
 
 
-def cut_nii_gz(filename):
-    filename = os.path.splitext(filename)[0]
-    filename = os.path.splitext(filename)[0]
-    return filename
-
-
-def get_session_from_dir(dirname):
-    for directory in dirname.split('/'):
-        if 'ses-' in directory:
-            return directory
-    return None
-
-
-def root_directory(directory):
-    neardirs = os.listdir(directory)
-    for neardir in neardirs:
-        if 'sub-' in neardir:
-            return True
-    return False
-
-
-def build_directory(dirname, self):
-    rec_type = dirname.split('/')[-1]
-   
-    if 'ses-' in dirname:
-        session = get_session_from_dir(dirname)
-        dirname = self.basedir
-        dirname += '/derivatives'
-        dirname += '/{}/'.format(self.__class__.__name__)
-        dirname += '{}/'.format(session)
-        dirname += '{}/'.format(rec_type)
-
-    else:
-        
-        dirname = self.basedir
-        dirname += '/derivatives'
-        dirname += '/{}/'.format(self.__class__.__name__)
-        dirname += '{}/'.format(rec_type)
-
-    return dirname
-
-
-def build_filepath_for_ROI(dirname, filename, self):
-    roi_file = dirname + cut_nii_gz(filename)
-
-    if self.space is not None:
-        roi_file += '_space-{}'.format(self.space)
-
-    if self.variant is not None:
-        roi_file += '_variant-{}'.format(self.variant)
-
-    roi_file += '_label-{}'.format(self.label) + '_roi'
-    roi_file = os.path.abspath(roi_file) + '.nii.gz'
-    return roi_file
-
-
-def build_filepath_for_BET(dirname, filename, self):
-    bet_file = dirname + cut_nii_gz(filename)
-
-    if self.space is not None:
-        bet_file += '_space-{}'.format(self.space)
-
-    if self.variant is not None:
-        bet_file += '_variant-{}'.format(self.variant)
-
-    bet_file += '_label-{}'.format(self.label) + '_brain'
-    bet_file = os.path.abspath(bet_file) + '.nii.gz'
-    return bet_file
-
-
-def run_fsl_roi(in_file, self):
-    filename = os.path.basename(in_file)
-    dirname = os.path.dirname(in_file)
-    dirname = build_directory(dirname, self)
-    if not os.path.exists(dirname):
-            os.makedirs(dirname)
-
-    roi_file = build_filepath_for_ROI(dirname, filename, self)
+class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
     
-    fslroi = ExtractROI(in_file=in_file,
-                        roi_file=roi_file,
-                        t_min=0,
-                        t_size=1)
-    fslroi.run()
-    
+    def __init__(
+            self,
+            pipeline_name,
+            data_dir,
+            search_param=dict(),
+            transform_param=dict(),
+            space=None,
+            variant=None):
 
-class ROITransformer(BaseEstimator, TransformerMixin):
-    
-    def __init__(self, label, basedir=os.path.abspath('.'), space=None,
-            variant=None, **params):
-        self.space = space
-        self.variant = variant
-        self.label = label
-        self.params = params
-        self.basedir = basedir
-        self.layout = BIDSLayout(basedir)
-    
+        self.pipeline_name = pipeline_name
+        self.data_dir = data_dir
+        self.search_param = search_param
+        self.transform_param = transform_param
+
+        self.tags = dict()
+        if space:
+            self.tags['space'] = space
+        if variant:
+            self.tags['variant'] = variant
+        if self.tags == dict():
+            self.tags = None
+
     def fit(self, X, y=None, **fit_params):
         return self
 
     def transform(self, X, y=None):
-
-        assert type(X) == list
+        
+        PM = PathManager(self.data_dir)
 
         if type(X[0]) == tuple:
-            
+
             X = X.copy()
+
             for subject, session in X:
-                in_file = self.layout.get(subject=subject, session=session, **self.params)[0].filename
-                run_fsl_roi(in_file, self)
+
+                in_file = PM.get(subject=subject,
+                                 session=session,
+                                 **self.search_param)
+                assert len(in_file) == 1
+                in_file = in_file[0]
+
+                out_file = PM.make(in_file=in_file,
+                                   pipeline_name=self.pipeline_name,
+                                   derivative='brain',
+                                   tags=self.tags)
+
+                dirname = os.path.dirname(out_file)
+                if not os.path.exists(dirname):
+                    os.makedirs(dirname)
+
+                betfsl = BET(in_file=in_file,
+                             out_file=out_file,
+                             **self.transform_param)
+                betfsl.run()
 
         elif type(X[0]) == str:
-
+            
             X = X.copy()
+
             for subject in X:
-                in_file = self.layout.get(subject=subject, **self.params)[0].filename
-                run_fsl_roi(in_file, self)
+
+                in_files = PM.get(subject=subject,
+                                 **self.search_param)
+
+                for in_file in in_files:
+
+                    out_file = PM.make(in_file=in_file,
+                                       pipeline_name=self.pipeline_name,
+                                       derivative='brain',
+                                       tags=self.tags)
+
+                    dirname = os.path.dirname(out_file)
+                    if not os.path.exists(dirname):
+                        os.makedirs(dirname)
+
+                    betfsl = BET(in_file=in_file,
+                                 out_file=out_file,
+                                 **self.transform_param)
+                    betfsl.run()
 
         return X
 
 
-def run_fsl_bet(in_file, self):
-    filename = os.path.basename(in_file)
-    dirname = os.path.dirname(in_file)
-    dirname = build_directory(dirname, self)
-    if not os.path.exists(dirname):
-            os.makedirs(dirname)
+class NUCorrectionTransformer(BaseEstimator, TransformerMixin):
 
-    bet_file = build_filepath_for_BET(dirname, filename, self)
-    
-    fslbet = BET(in_file=in_file,
-                 out_file=bet_file)
-    fslbet.run()
+    def __init__(self):
+        pass
 
-
-class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
-
-    def __init__(self, basedir=os.path.abspath('.'), space=None, variant=None, label=None, **params):
-        self.space = space
-        self.variant = variant
-        self.basedir = basedir
-        self.layout = BIDSLayout(basedir)
-        self.params = params
-        self.label = label
-    
     def fit(self, X, y=None, **fit_params):
         return self
 
     def transform(self, X, y=None):
+        return X
 
-        assert type(X) == list
 
-        if type(X[0]) == tuple:
+class LinearRegistrationTransformer(BaseEstimator, TransformerMixin):
 
-            X = X.copy()
-            for subject, session in X:
-                in_file = self.layout.get(subject=subject, session=session, **self.params)
+    def __init__(self):
+        pass
 
-                if self.label is not None:
-                    for File in in_file:
-                        if '_label-{}'.format(self.label) in File.filename:
-                            in_file = File
+    def fit(self):
+        return self
 
-                if type(in_file) == list:
-                    in_file = in_file[0].filename
-                else:
-                    in_file = in_file.filename
+    def transform(self, X):
+        return X
 
-                run_fsl_bet(in_file, self)
 
-        elif type(X[0]) == str:
+class NonLinearRegistrationTransformer(BaseEstimator, TransformerMixin):
 
-            X = X.copy()
-            for subject in X:
+    def __init__(self):
+        pass
 
-                in_file = self.layout.get(subject=subject, **self.params)
+    def fit(self):
+        return self
 
-                if self.label is not None:
-                    for File in in_file:
-                        if '_label-{}'.format(self.label) in File.filename:
-                            in_file = File
-
-                if type(in_file) == list:
-                    in_file = in_file[0].filename
-                else:
-                    in_file = in_file.filename
-
-                run_fsl_bet(in_file, self)
-
+    def transform(self, X):
         return X
