@@ -50,7 +50,7 @@ def build_T1w_out_file_path(
 def test_skull_stripping_tuples():
 
     data_dir = os.path.abspath('.') + '/data/ds114'
-    pipeline_name = 'test_SkullStrippingTransformer_ds114'
+    pipeline_name = 'test_skullStrippingTransformer_ds114'
 
     IDS = [('01', 'retest'),
            ('02', 'retest'),
@@ -61,7 +61,7 @@ def test_skull_stripping_tuples():
         pipeline_name=pipeline_name,
         search_param=dict(
             extensions='T1w.nii.gz'),
-        variant='tuples')
+        variant='skullStrippingTuples')
     transformer.fit_transform(IDS)
 
     for subject, session in IDS:
@@ -74,8 +74,8 @@ def test_skull_stripping_tuples():
                                            pipeline_name,
                                            subject,
                                            session,
-                                           'tuples',
-                                           'needed_brain')
+                                           'skullStrippingTuples',
+                                           'neededBrain')
 
         dirname = os.path.dirname(out_file)
         if not os.path.exists(dirname):
@@ -89,7 +89,7 @@ def test_skull_stripping_tuples():
                                            pipeline_name,
                                            subject,
                                            session,
-                                           'tuples',
+                                           'skullStrippingTuples',
                                            'brain')
 
         result_mat = nib.load(res_file).affine
@@ -102,7 +102,7 @@ def test_skull_stripping_tuples():
 def test_skull_stripping_ids_only():
 
     data_dir = os.path.abspath('.') + '/data/ds114'
-    pipeline_name = 'test_SkullStrippingTransformer_ds114'
+    pipeline_name = 'test_skullStrippingTransformer_ds114'
 
     IDS = ['01', '02', '03']
     sessions = ['test', 'retest']
@@ -112,7 +112,7 @@ def test_skull_stripping_ids_only():
         pipeline_name=pipeline_name,
         search_param=dict(
             extensions='T1w.nii.gz'),
-        variant='ids_only')
+        variant='skullStrippingIDsOnly')
     transformer.fit_transform(IDS)
 
     for subject in IDS:
@@ -126,8 +126,8 @@ def test_skull_stripping_ids_only():
                                                pipeline_name,
                                                subject,
                                                session,
-                                               'ids_only',
-                                               'needed_brain')
+                                               'skullStrippingIDsOnly',
+                                               'neededBrain')
 
             dirname = os.path.dirname(out_file)
             if not os.path.exists(dirname):
@@ -141,8 +141,114 @@ def test_skull_stripping_ids_only():
                                                pipeline_name,
                                                subject,
                                                session,
-                                               'ids_only',
+                                               'skullStrippingIDsOnly',
                                                'brain')
+
+            result_mat = nib.load(res_file).affine
+            output_mat = nib.load(out_file).affine
+            assert np.allclose(result_mat, output_mat)
+            os.remove(res_file)
+            os.remove(out_file)
+
+
+def test_nu_correction_tuples():
+
+    data_dir = os.path.abspath('.') + '/data/ds114'
+    pipeline_name = 'test_nuCorrectionTransformer_ds114'
+
+    IDS = [('01', 'retest'),
+           ('02', 'retest'),
+           ('03', 'test')]
+
+    transformer = NUCorrectionTransformer(
+        data_dir=data_dir,
+        pipeline_name=pipeline_name,
+        search_param=dict(
+            extensions='T1w.nii.gz'),
+        variant='nuCorrectionTuples')
+    transformer.fit_transform(IDS)
+
+    for subject, session in IDS:
+
+        in_file = build_T1w_in_file_path(data_dir,
+                                         subject,
+                                         session)
+
+        out_file = build_T1w_out_file_path(data_dir,
+                                           pipeline_name,
+                                           subject,
+                                           session,
+                                           'nuCorrectionTuples',
+                                           'neededNu')
+
+        dirname = os.path.dirname(out_file)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        nuants = N4BiasFieldCorrection()
+        nuants.inputs.input_image = in_file
+        nuants.inputs.output_image = out_file
+        nuants.run()
+
+        res_file = build_T1w_out_file_path(data_dir,
+                                           pipeline_name,
+                                           subject,
+                                           session,
+                                           'nuCorrectionTuples',
+                                           'nu')
+
+        result_mat = nib.load(res_file).affine
+        output_mat = nib.load(out_file).affine
+        assert np.allclose(result_mat, output_mat)
+        os.remove(res_file)
+        os.remove(out_file)
+
+
+def test_nu_correction_ids_only():
+
+    data_dir = os.path.abspath('.') + '/data/ds114'
+    pipeline_name = 'test_nuCorrectionTransformer_ds114'
+
+    IDS = ['01', '02', '03']
+    sessions = ['test', 'retest']
+
+    transformer = NUCorrectionTransformer(
+        data_dir=data_dir,
+        pipeline_name=pipeline_name,
+        search_param=dict(
+            extensions='T1w.nii.gz'),
+        variant='nuCorrectionIDsOnly')
+    transformer.fit_transform(IDS)
+
+    for subject in IDS:
+        for session in sessions:
+
+            in_file = build_T1w_in_file_path(data_dir,
+                                             subject,
+                                             session)
+
+            out_file = build_T1w_out_file_path(data_dir,
+                                               pipeline_name,
+                                               subject,
+                                               session,
+                                               'nuCorrectionIDsOnly',
+                                               'neededNu')
+
+            dirname = os.path.dirname(out_file)
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+
+            nuants = N4BiasFieldCorrection()
+            nuants.inputs.input_image = in_file
+            nuants.inputs.output_image = out_file
+            nuants.run()
+            
+            res_file = build_T1w_out_file_path(data_dir,
+                                               pipeline_name,
+                                               subject,
+                                               session,
+                                               'nuCorrectionIDsOnly',
+                                               'nu')
 
             result_mat = nib.load(res_file).affine
             output_mat = nib.load(out_file).affine
