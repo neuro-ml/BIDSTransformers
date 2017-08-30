@@ -2,14 +2,180 @@ import os
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
 
-from .path_manager import PathManager
+from bids.grabbids import BIDSLayout
 
 from nipype.interfaces.fsl import ExtractROI
 from nipype.interfaces.fsl import BET
 from nipype.interfaces.fsl import FLIRT
 from nipype.interfaces.fsl import FNIRT
+from nipype.interfaces.fsl import FAST
 from nipype.interfaces.ants import N4BiasFieldCorrection
 
+
+def get_destination_path_for_fast(step_dir, filepath_source):
+    path, filename = os.path.split(filepath_source)
+    path, directory = os.path.split(path)
+
+    inner_structure_path = list()
+    inner_structure_path.append(directory)
+    while 'sub-' not in directory:
+        path, directory = os.path.split(path)
+        inner_structure_path.append(directory)
+    inner_structure_path = reversed(inner_structure_path) 
+
+    print('Renaming filename: {}'.format(filename))
+    if 'pve_0' in filename:
+        filename = filename.replace('pve_0', 'class-CSF_probtissue')
+    if 'pve_1' in filename:
+        filename = filename.replace('pve_1', 'class-GM_probtissue')
+    if 'pve_2' in filename:
+        filename =filename.replace('pve_2', 'class-WM_probtissue')
+    print('New filename: {}'.format(filename))
+
+    destination_dir = os.path.join(step_dir,
+                                    *inner_structure_path)
+
+    if not os.path.exists(destination_dir):
+        os.makedirs(destination_dir)
+
+    destination_file = os.path.join(destination_dir,
+                                    filename)
+
+    return destination_file
+
+
+class TissueSegmentation(BaseEstimator, TransformerMixin):
+
+    def __init__(
+            self,
+            pipeline_name,
+            project_path,
+            gather_steps=dict(),
+            backend='fsl',
+            backend_param=dict(),
+            transformer_name='tissuesegmentation'):
+
+        self.pipeline_name = pipeline_name
+        self.project_path = project_path
+        self.gather_steps = gather_steps
+        self.backend = backend
+        self.backend_param = backend_param
+        self.transformer_name = transformer_name
+
+    def fit(self, X, y=None, **fit_params):
+        return self
+
+    def transform(self, X, y=None):
+
+        in_files_search_param = self.gather_steps[1]
+
+        if type(X[0]) == str and  \
+           self.backend == 'fsl' and \
+           self.gather_steps[0] != 'source':
+
+            in_files_dir = os.path.join(self.project_path,
+                                        'derivatives',
+                                        self.pipeline_name,
+                                        '.cached',
+                                        self.gather_steps[1])
+
+            layout = BIDSLayout(in_files_dir)
+
+            X.copy()
+
+            for subject in X:
+                
+                in_files = []
+                for path in layout.get(subject=subject,
+                                       **in_files_search_param):
+                    path = path.filename
+                    in_files.append(path)
+
+                for in_file in in_files:
+
+                    dirname = os.path.dirname(in_file)
+                    prev_files = os.listdir(dirname)
+
+                    fastfsl = FAST(in_files=in_file,
+                                   **self.backend_param)
+                    fastfsl.run()
+
+                    step_dir = os.path.join(self.project_path,
+                                            'derivatives',
+                                            self.pipeline_name,
+                                            '.cached',
+                                            self.transformer_name)
+
+                    curr_files = os.listdir(dirname)
+                    for dir_file in curr_files:
+                        if dir_file not in prev_files:
+                            filepath_source = os.path.join(dirname,
+                                                           dir_file)
+                            filepath_destination = get_destination_path_for_fast(
+                                                        step_dir,
+                                                        filepath_source)
+                            os.rename(filepath_source, filepath_destination)
+
+
+        elif type(X[0]) == str and \
+             self.backend == 'fsl' and \
+             self.gather_steps[0] == 'source':
+
+            in_files_dir = self.project_path
+
+            layout = BIDSLayout(in_files_dir)
+
+            X = X.copy()
+
+            for subject in X:
+                print('\n\nSUBJECT: {}'.format(subject))
+
+                in_files = []
+                for path in layout.get(subject=subject,
+                                       **in_files_search_param):
+                    path = path.filename
+                    if 'derivatives' not in path.split(os.sep):
+                        in_files.append(path)
+
+                for in_file in in_files:
+                    print('in_file: {}'.format(in_file))
+
+                    dirname = os.path.dirname(in_file)
+                    prev_files = os.listdir(dirname)
+
+                    print('prev_files: {}'.format(prev_files))
+                    print('Processing...')
+
+                    fastfsl = FAST(in_files=in_file,
+                                   **self.backend_param)
+                    fastfsl.run()
+
+                    step_dir = os.path.join(self.project_path,
+                                            'derivatives',
+                                            self.pipeline_name,
+                                            '.cached',
+                                            self.transformer_name)
+
+                    curr_files = os.listdir(dirname)
+
+                    print('step_dir: {}'.format(step_dir))
+                    print('curr_files: {}'.format(curr_files))
+
+                    for dir_file in curr_files:
+                        if dir_file not in prev_files:
+                            filepath_source = os.path.join(dirname,
+                                                           dir_file)
+                            filepath_destination = get_destination_path_for_fast(
+                                                        step_dir,
+                                                        filepath_source)
+
+                            print('filepath_source: {}'.format(filepath_source))
+                            print('filepath_destination: {}'.format(filepath_destination))
+
+                            os.rename(filepath_source, filepath_destination)
+
+        return X
+            
 
 class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
 
