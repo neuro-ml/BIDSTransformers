@@ -12,6 +12,12 @@ from nipype.interfaces.fsl import FAST
 from nipype.interfaces.ants import N4BiasFieldCorrection
 
 
+def get_brain_filename(filename):
+    index = filename.find('_T1w') + 4
+    filename = filename[:index] + '_brain.nii.gz'
+    return filename
+
+
 def get_destination_path_for_fast(step_dir, filepath_source):
     path, filename = os.path.split(filepath_source)
     path, directory = os.path.split(path)
@@ -77,7 +83,7 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
                                         'derivatives',
                                         self.pipeline_name,
                                         '.cached',
-                                        self.gather_steps[1])
+                                        self.gather_steps[0])
 
             layout = BIDSLayout(in_files_dir)
 
@@ -182,81 +188,128 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
     def __init__(
             self,
             pipeline_name,
-            data_dir,
-            search_param=dict(),
-            transform_param=dict(),
-            space=None,
-            variant=None):
+            project_path,
+            gather_steps=dict(),
+            backend='fsl',
+            backend_param=dict(),
+            transformer_name='skullstripping'):
 
         self.pipeline_name = pipeline_name
-        self.data_dir = data_dir
-        self.search_param = search_param
-        self.transform_param = transform_param
-
-        self.tags = list()
-        if space:
-            self.tags.append( ('space', space) )
-        if variant:
-            self.tags.append( ('variant', variant) )
-        if self.tags == list():
-            self.tags = None
+        self.project_path = project_path
+        self.gather_steps = gather_steps
+        self.backend = backend
+        self.backend_param = backend_param
+        self.transformer_name = transformer_name
 
     def fit(self, X, y=None, **fit_params):
         return self
 
     def transform(self, X, y=None):
 
-        PM = PathManager(self.data_dir)
+        in_files_search_param = self.gather_steps[1]
 
-        if type(X[0]) == tuple:
+        if type(X[0]) == str and  \
+           self.backend == 'fsl' and \
+           self.gather_steps[0] != 'source':
 
-            X = X.copy()
+            in_files_dir = os.path.join(self.project_path,
+                                        'derivatives',
+                                        self.pipeline_name,
+                                        '.cached',
+                                        self.gather_steps[0])
 
-            for subject, session in X:
+            layout = BIDSLayout(in_files_dir)
 
-                in_file = PM.get(subject=subject,
-                                 session=session,
-                                 **self.search_param)
-                assert len(in_file) == 1
-                in_file = in_file[0]
+            X.copy()
 
-                out_file = PM.make(in_file=in_file,
-                                   pipeline_name=self.pipeline_name,
-                                   derivative='brain',
-                                   tags=self.tags)
+            for subject in X:
+                
+                in_files = []
+                for path in layout.get(subject=subject,
+                                       **in_files_search_param):
+                    path = path.filename
+                    in_files.append(path)
 
-                dirname = os.path.dirname(out_file)
-                if not os.path.exists(dirname):
-                    os.makedirs(dirname)
+                for in_file in in_files:
 
-                betfsl = BET(in_file=in_file,
-                             out_file=out_file,
-                             **self.transform_param)
-                betfsl.run()
+                    path, filename = os.path.split(in_file)
+                    path, directory = os.path.split(path)
 
-        elif type(X[0]) == str:
+                    inner_structure_path = list()
+                    inner_structure_path.append(directory)
+                    while 'sub-' not in directory:
+                        path, directory = os.path.split(path)
+                        inner_structure_path.append(directory)
+                    inner_structure_path = reversed(inner_structure_path)
+
+                    out_dir = os.path.join(self.project_path,
+                                           'derivatives',
+                                           self.pipeline_name,
+                                           '.cached',
+                                           self.transformer_name,
+                                           *inner_structure_path)
+
+                    if not os.path.exists(out_dir):
+                        os.makedirs(out_dir)
+
+                    out_filename = get_brain_filename(filename)
+                    out_file = os.path.join(out_dir,
+                                            out_filename)
+
+                    betfsl = BET(in_file=in_file,
+                                 out_file=out_file,
+                                 **self.backend_param)
+                    betfsl.run()
+
+        if type(X[0]) == str and  \
+           self.backend == 'fsl' and \
+           self.gather_steps[0] == 'source':
+        
+            in_files_dir = self.project_path
+
+            layout = BIDSLayout(in_files_dir)
 
             X = X.copy()
 
             for subject in X:
 
-                in_files = PM.get(subject=subject,
-                                  **self.search_param)
+                in_files = []
+                for path in layout.get(subject=subject,
+                                       **in_files_search_param):
+                    path = path.filename
+                    if 'derivatives' not in path.split(os.sep):
+                        in_files.append(path)
 
                 for in_file in in_files:
+                    
+                    path, filename = os.path.split(in_file)
+                    path, directory = os.path.split(path)
 
-                    out_file = PM.make(in_file=in_file,
-                                       pipeline_name=self.pipeline_name,
-                                       derivative='brain',
-                                       tags=self.tags)
+                    inner_structure_path = list()
+                    inner_structure_path.append(directory)
+                    while 'sub-' not in directory:
+                        path, directory = os.path.split(path)
+                        inner_structure_path.append(directory)
+                    inner_structure_path = reversed(inner_structure_path)
 
-                    dirname = os.path.dirname(out_file)
-                    if not os.path.exists(dirname):
-                        os.makedirs(dirname)
+                    out_dir = os.path.join(self.project_path,
+                                           'derivatives',
+                                           self.pipeline_name,
+                                           '.cached',
+                                           self.transformer_name,
+                                           *inner_structure_path)
+
+                    if not os.path.exists(out_dir):
+                        os.makedirs(out_dir)
+
+                    out_filename = get_brain_filename(filename)
+                    out_file = os.path.join(out_dir,
+                                            out_filename)
+                    print(out_file)
 
                     betfsl = BET(in_file=in_file,
                                  out_file=out_file,
-                                 **self.transform_param)
+                                 **self.backend_param)
                     betfsl.run()
 
         return X
