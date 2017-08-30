@@ -1,3 +1,4 @@
+import pandas as pd
 import os
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
@@ -313,6 +314,72 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
                     betfsl.run()
 
         return X
+
+
+class StatAggregator(BaseEstimator, TransformerMixin):
+    
+    def __init__(
+            self,
+            function,
+            pipeline_name,
+            project_path,
+            gather_steps=dict(),
+            transformer_name='stataggregator'):
+
+        self.function = function
+        self.pipeline_name = pipeline_name
+        self.project_path = project_path
+        self.gather_steps = gather_steps
+        self.transformer_name = transformer_name
+
+    def fit(self, X, y=None, **fit_params):
+        return self
+
+    def transform(self, X, y=None):
+
+        agg_results = dict()
+        in_files_search_param = self.gather_steps[1]
+
+        if type(X[0]) == str and  \
+           self.gather_steps[0] != 'source':
+            """
+            in_files_dir = os.path.join(self.project_path,
+                                        'derivatives',
+                                        self.pipeline_name,
+                                        'steps',
+                                        self.gather_steps[0])
+            print(in_files_dir)
+            """
+            layout = BIDSLayout(self.project_path)
+
+            X.copy()
+
+            for subject in X:
+                print('SUBJECT {}'.format(subject))
+                
+                in_files = layout.get(subject=subject,
+                                     **in_files_search_param)
+                print(in_files_search_param)
+                print(in_files)
+                sessions = []
+                dirnames = []
+                for in_file in in_files:
+                    print('in_file {}'.format(in_file))
+                    path, filename = os.path.split(in_file.filename)
+                    session = filename.split('_')[1][4:]
+                    if session not in sessions:
+                        sessions.append(session)
+                    print('session {}'.format(session))
+                        
+                    if path not in dirnames:
+                        dirnames.append(path)
+                    print('path {}'.format(path))
+
+                for dirname, session in zip(dirnames, sessions):
+
+                    agg_results[(subject, session)] = self.function(dirname)
+
+        return pd.DataFrame(agg_results).T
 
 
 class NUCorrectionTransformer(BaseEstimator, TransformerMixin):
