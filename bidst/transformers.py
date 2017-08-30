@@ -82,7 +82,7 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
             in_files_dir = os.path.join(self.project_path,
                                         'derivatives',
                                         self.pipeline_name,
-                                        '.cached',
+                                        'steps',
                                         self.gather_steps[0])
 
             layout = BIDSLayout(in_files_dir)
@@ -109,7 +109,7 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
                     step_dir = os.path.join(self.project_path,
                                             'derivatives',
                                             self.pipeline_name,
-                                            '.cached',
+                                            'steps',
                                             self.transformer_name)
 
                     curr_files = os.listdir(dirname)
@@ -159,7 +159,7 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
                     step_dir = os.path.join(self.project_path,
                                             'derivatives',
                                             self.pipeline_name,
-                                            '.cached',
+                                            'steps',
                                             self.transformer_name)
 
                     curr_files = os.listdir(dirname)
@@ -215,7 +215,7 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
             in_files_dir = os.path.join(self.project_path,
                                         'derivatives',
                                         self.pipeline_name,
-                                        '.cached',
+                                        'steps',
                                         self.gather_steps[0])
 
             layout = BIDSLayout(in_files_dir)
@@ -245,7 +245,7 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
                     out_dir = os.path.join(self.project_path,
                                            'derivatives',
                                            self.pipeline_name,
-                                           '.cached',
+                                           'steps',
                                            self.transformer_name,
                                            *inner_structure_path)
 
@@ -295,7 +295,7 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
                     out_dir = os.path.join(self.project_path,
                                            'derivatives',
                                            self.pipeline_name,
-                                           '.cached',
+                                           'steps',
                                            self.transformer_name,
                                            *inner_structure_path)
 
