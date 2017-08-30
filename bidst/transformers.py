@@ -258,7 +258,7 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
                     if not os.path.exists(out_dir):
                         os.makedirs(out_dir)
 
-                    out_filename = get_nu_filename(filename)
+                    out_filename = get_brain_filename(filename)
                     out_file = os.path.join(out_dir,
                                             out_filename)
 
@@ -457,7 +457,7 @@ class NUCorrectionTransformer(BaseEstimator, TransformerMixin):
                         os.umask(0)
                         os.makedirs(out_dir)
 
-                    out_filename = get_brain_filename(filename)
+                    out_filename = get_nu_filename(filename)
                     out_file = os.path.join(out_dir,
                                             out_filename)
 
