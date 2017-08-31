@@ -78,7 +78,8 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-
+        
+        initcwd = os.getcwd()
         in_files_search_param = self.gather_steps[1]
 
         if type(X[0]) == str and  \
@@ -107,7 +108,8 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
 
                     dirname = os.path.dirname(in_file)
                     prev_files = os.listdir(dirname)
-
+                    
+                    os.chdir(dirname)
                     fastfsl = FAST(in_files=in_file,
                                    **self.backend_param)
                     fastfsl.run()
@@ -158,6 +160,7 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
                     print('prev_files: {}'.format(prev_files))
                     print('Processing...')
 
+                    os.chdir(dirname)
                     fastfsl = FAST(in_files=in_file,
                                    **self.backend_param)
                     fastfsl.run()
@@ -185,7 +188,7 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
                             print('filepath_destination: {}'.format(filepath_destination))
 
                             os.rename(filepath_source, filepath_destination)
-
+        os.chdir(initcwd) 
         return X
             
 
