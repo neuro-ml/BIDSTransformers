@@ -60,11 +60,11 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
 
     def __init__(
             self,
-            pipeline_name,
             project_path,
             gather_steps=dict(),
             backend='fsl',
             backend_param=dict(),
+            pipeline_name='tissuesegmentation_pipeline',
             transformer_name='tissuesegmentation'):
 
         self.pipeline_name = pipeline_name
@@ -196,11 +196,11 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(
             self,
-            pipeline_name,
             project_path,
             gather_steps=dict(),
             backend='fsl',
             backend_param=dict(),
+            pipeline_name='skullstripping_pipeline',
             transformer_name='skullstripping'):
 
         self.pipeline_name = pipeline_name
@@ -329,9 +329,9 @@ class StatAggregator(BaseEstimator, TransformerMixin):
     def __init__(
             self,
             function,
-            pipeline_name,
             project_path,
             gather_steps=dict(),
+            pipeline_name='stataggregator_pipeline',
             transformer_name='stataggregator'):
 
         self.function = function
@@ -394,11 +394,11 @@ class NUCorrectionTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(
             self,
-            pipeline_name,
             project_path,
             gather_steps=dict(),
             backend='ants',
             backend_param=dict(),
+            pipeline_name='nucorrection_pipeline',
             transformer_name='nucorrection'):
 
         self.pipeline_name = pipeline_name
