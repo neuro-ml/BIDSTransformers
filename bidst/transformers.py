@@ -60,7 +60,7 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
 
     def __init__(
             self,
-            project_path,
+            project_path=None,
             gather_steps=dict(),
             backend='fsl',
             backend_param=dict(),
@@ -68,11 +68,15 @@ class TissueSegmentation(BaseEstimator, TransformerMixin):
             transformer_name='tissuesegmentation'):
 
         self.pipeline_name = pipeline_name
-        self.project_path = project_path
         self.gather_steps = gather_steps
         self.backend = backend
         self.backend_param = backend_param
         self.transformer_name = transformer_name
+
+        if project_path == None:
+            self.project_path = os.getcwd()
+        else:
+            self.project_path = project_path
 
     def fit(self, X, y=None, **fit_params):
         return self
@@ -196,7 +200,7 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(
             self,
-            project_path,
+            project_path=None,
             gather_steps=dict(),
             backend='fsl',
             backend_param=dict(),
@@ -204,11 +208,15 @@ class SkullStrippingTransformer(BaseEstimator, TransformerMixin):
             transformer_name='skullstripping'):
 
         self.pipeline_name = pipeline_name
-        self.project_path = project_path
         self.gather_steps = gather_steps
         self.backend = backend
         self.backend_param = backend_param
         self.transformer_name = transformer_name
+
+        if project_path == None:
+            self.project_path = os.getcwd()
+        else:
+            self.project_path = project_path
 
     def fit(self, X, y=None, **fit_params):
         return self
@@ -329,16 +337,21 @@ class StatAggregator(BaseEstimator, TransformerMixin):
     def __init__(
             self,
             function,
-            project_path,
+            project_path=None,
             gather_steps=dict(),
             pipeline_name='stataggregator_pipeline',
             transformer_name='stataggregator'):
 
         self.function = function
         self.pipeline_name = pipeline_name
-        self.project_path = project_path
         self.gather_steps = gather_steps
         self.transformer_name = transformer_name
+
+        if project_path == None:
+            self.project_path = os.getcwd()
+        else:
+            self.project_path = project_path
+
 
     def fit(self, X, y=None, **fit_params):
         return self
@@ -394,7 +407,7 @@ class NUCorrectionTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(
             self,
-            project_path,
+            project_path=None,
             gather_steps=dict(),
             backend='ants',
             backend_param=dict(),
@@ -402,13 +415,18 @@ class NUCorrectionTransformer(BaseEstimator, TransformerMixin):
             transformer_name='nucorrection'):
 
         self.pipeline_name = pipeline_name
-        self.project_path = project_path
         self.gather_steps = gather_steps
         self.backend = backend
         self.backend_param = backend_param
         self.transformer_name = transformer_name
 
+        if project_path == None:
+            self.project_path = os.getcwd()
+        else:
+            self.project_path = project_path
+
     def fit(self, X, y=None, **fit_params):
+
         return self
 
     def transform(self, X, y=None):
@@ -457,7 +475,6 @@ class NUCorrectionTransformer(BaseEstimator, TransformerMixin):
                                            *inner_structure_path)
 
                     if not os.path.exists(out_dir):
-                        os.umask(0)
                         os.makedirs(out_dir)
 
                     out_filename = get_nu_filename(filename)
@@ -508,13 +525,13 @@ class NUCorrectionTransformer(BaseEstimator, TransformerMixin):
                                            *inner_structure_path)
 
                     if not os.path.exists(out_dir):
-                        os.umask(0)
                         os.makedirs(out_dir)
 
                     out_filename = get_nu_filename(filename)
                     out_file = os.path.join(out_dir,
                                             out_filename)
                     print(out_file)
+                    print(in_file)
 
                     nuants = N4BiasFieldCorrection()
                     nuants.inputs.input_image = in_file
