@@ -19,10 +19,13 @@ You can follow the [Nipype](https://miykael.github.io/nipype_tutorial/) tutorial
 
 ## Using docker
 
-### Getting nipype container:
+### Getting neuro\_docker container:
 
-```bash
-sudo docker pull nipype/nipype
+```bash 
+git clone https://github.com/Neurita/neuro_docker.git
+cd neuro_docker
+docker build -t="dockerfile/neuro" .
+cd ..
 ```
 
 ### Downloading repository
@@ -35,15 +38,18 @@ cd BIDSTransformers
 ### Running docker:
 
 ```bash
-sudo docker run -v $PWD/:/work -it -p 8809:8809 nipype/nipype:latest
+sudo docker run -v $PWD/:/work/soft/BIDSTransformers -it -p 8809:8809 dockerfile/neuro
 ```
 
 ### Installing needed packages in the docker:
 
 ```bash
-pip install ipython notebook pybids
+pip install notebook pybids duecredit
 apt-get update
 apt-get install tree
+
+export PATH=/work/soft/ants/build/bin:$PATH
+export ANTSPATH=/work/soft/ants/build/bin/
 ```
 
 ### Starting jupyter notebook in the docker:
@@ -58,6 +64,10 @@ You will see message:
   Copy/paste this URL into your browser when you connect for the first time,
   to login with a token:
     http://localhost:8809/?token=some_token
+```
+
+```
+git checkout crn-code-sprint2017
 ```
 
 You will need to open this url in your browser and copy the token.
